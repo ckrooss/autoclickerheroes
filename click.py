@@ -1,3 +1,20 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+The ClickerHeroesAutoclicker plays CLickerHeroes (https://www.clickerheroes.com) for you.
+It attacks at maximum speed, buys hero upgrades, activates your powers and even clicks the collectable fish.
+
+Usage:
+    Activate the NUMLOCK LED on your keyboard to activate the bot. Deactive it to pause the bot.
+
+Requirements:
+    Windows
+    pywin32
+    opencv3
+    numpy
+    Pillow
+"""
+
 import win32api
 import win32con
 from itertools import cycle
@@ -34,9 +51,8 @@ def find_fish():
     if maxVal:
         # Add dirty offsets because result.shape != img.shape
         x, y = maxLoc
-        y = 1080 - y
+        y = 1080 - y + 160
         x += 10
-        y += 160
 
         return x, y
     else:
