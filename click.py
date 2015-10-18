@@ -22,6 +22,7 @@ from time import sleep
 import PIL.ImageGrab as pg
 import numpy as np
 import cv2
+from threading import Timer
 
 FISH = cv2.imread("fish.png")
 
@@ -37,15 +38,20 @@ POWERS = (1001, 360)
 
 IDLE = False
 
+CLICK_PERIOD = 1/2
+BUY_PERIOD = 10
+POWERS_PERIOD = 150
+FISH_PERIOD = 60
 
-def find_fish():
+
+def find_object(template):
     """
-    Find the fish-object and return it's x and y coordinates
-    Only works on the primary monitor at 1920x1080!
+    Find the object in template and return it's x and y coordinates
+    Only works on the primary monitor!
     """
     img = np.array(pg.grab())
     img = img[:, :, ::-1].copy()
-    result = cv2.matchTemplate(img, FISH, method=cv2.TM_CCOEFF_NORMED)
+    result = cv2.matchTemplate(img, template, method=cv2.TM_CCOEFF_NORMED)
     _, result = cv2.threshold(result.copy(), 0.9, 1, cv2.THRESH_BINARY)
 
     _, maxVal, _, maxLoc = cv2.minMaxLoc(result)
@@ -53,11 +59,11 @@ def find_fish():
     if maxVal:
         x, y = maxLoc
 
-        x_center = (2*x + FISH.shape[1]) / 2
-        y_center = (2*y + FISH.shape[0]) / 2
+        x_center = (2*x + template.shape[1]) / 2
+        y_center = (2*y + template.shape[0]) / 2
 
-        # Debug: View rectangle around fish + center circle
-        # s = cv2.rectangle(img, (x, y), (x + FISH.shape[1], y + FISH.shape[0]), (0, 0, 255), 1)
+        # Debug: View rectangle around template + center circle
+        # s = cv2.rectangle(img, (x, y), (x + template.shape[1], y + template.shape[0]), (0, 0, 255), 1)
         # c = cv2.circle(s, (x_center, y_center), 22, (0, 255, 0), 1)
         # cv2.imshow("asd", s)
         # cv2.waitKey(0)
@@ -87,7 +93,7 @@ def do_attack():
 def do_buy():
     """Buy a single upgrade for the highest tier hero"""
     click(*BUY)
-    sleep(1.0 / 60.0)
+    sleep(CLICK_PERIOD)
 
 
 def do_powers():
@@ -95,40 +101,61 @@ def do_powers():
     for i in [1, 2, 3, 4, 5, 7, 8, 6, 9]:
         x, y = POWERS
         click(x, y + 55 * (i - 1))
-        sleep(0.05)
+        sleep(CLICK_PERIOD)
 
 
 def click_fish():
     """Find and click the fish-clickable"""
-    x, y = find_fish()
+    x, y = find_object(FISH)
 
     if x and y:
         click(x, y)
-        sleep(0.1)
+        sleep(CLICK_PERIOD)
+
+
+def attack_timer():
+    while active():
+        do_attack()
+    else:
+        return
+
+
+def buy_timer():
+    print("buy timer ticking")
+    for _ in range(10):
+        do_buy()
+
+    timers["buy"] = Timer(BUY_PERIOD, buy_timer)
+    timers["buy"].start()
+
+
+def powers_timer():
+    print("powers timer ticking")
+    do_powers()
+
+    timers["powers"] = Timer(POWERS_PERIOD, powers_timer)
+    timers["powers"].start()
+
+
+def fish_timer():
+    print("fish timer ticking")
+    click_fish()
+
+    timers["fish"] = Timer(FISH_PERIOD, fish_timer)
+    timers["fish"].start()
 
 
 if __name__ == '__main__':
-    # TODO: Create timer based events
-    if IDLE:
-        for i in cycle(range(1, 1000)):
-            if active():
-                if i % 99 == 0:
-                    click_fish()
-                    for _ in range(10):
-                        do_buy()
-    else:
-        for i in cycle(range(1, 1000)):
-            if active():
-                for _ in range(10):
-                    do_attack()
+    timers = {"attack": Timer(CLICK_PERIOD, attack_timer),
+              "buy": Timer(BUY_PERIOD, buy_timer),
+              "powers": Timer(POWERS_PERIOD, powers_timer),
+              "fish": Timer(FISH_PERIOD, fish_timer)}
 
-                if i % 99 == 0:
-                    click_fish()
-                    for _ in range(10):
-                        do_buy()
+    [t.start() for t in timers.values()]
 
-                if i % 999 == 0:
-                    do_powers()
-            else:
-                print("Standby...")
-                sleep(0.5)
+    timers["attack"].join()
+
+    print("Canceling timers")
+    [t.cancel() for t in timers.values()]
+
+    print("Exiting")
