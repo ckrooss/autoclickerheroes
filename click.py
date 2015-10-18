@@ -35,6 +35,8 @@ ATTACK = (1296, 558)
 BUY = (432, 819)
 POWERS = (1001, 360)
 
+IDLE = False
+
 
 def find_fish():
     """
@@ -49,12 +51,18 @@ def find_fish():
     _, maxVal, _, maxLoc = cv2.minMaxLoc(result)
 
     if maxVal:
-        # Add dirty offsets because result.shape != img.shape
         x, y = maxLoc
-        y = 1080 - y + 160
-        x += 10
 
-        return x, y
+        x_center = (2*x + FISH.shape[1]) / 2
+        y_center = (2*y + FISH.shape[0]) / 2
+
+        # Debug: View rectangle around fish + center circle
+        # s = cv2.rectangle(img, (x, y), (x + FISH.shape[1], y + FISH.shape[0]), (0, 0, 255), 1)
+        # c = cv2.circle(s, (x_center, y_center), 22, (0, 255, 0), 1)
+        # cv2.imshow("asd", s)
+        # cv2.waitKey(0)
+
+        return x_center, y_center
     else:
         return 0, 0
 
@@ -93,24 +101,34 @@ def do_powers():
 def click_fish():
     """Find and click the fish-clickable"""
     x, y = find_fish()
+
     if x and y:
-        print("Caught a fish at %s:%s" % (x, y))
         click(x, y)
-        sleep(1)
+        sleep(0.1)
 
-# TODO: Create timer based events
-for i in cycle(range(1, 1000)):
-    if active():
-        for _ in range(10):
-            do_attack()
 
-        if i % 99 == 0:
-            click_fish()
-            for _ in range(10):
-                do_buy()
-
-        if i % 999 == 0:
-            do_powers()
+if __name__ == '__main__':
+    # TODO: Create timer based events
+    if IDLE:
+        for i in cycle(range(1, 1000)):
+            if active():
+                if i % 99 == 0:
+                    click_fish()
+                    for _ in range(10):
+                        do_buy()
     else:
-        print("Standby...")
-        sleep(0.5)
+        for i in cycle(range(1, 1000)):
+            if active():
+                for _ in range(10):
+                    do_attack()
+
+                if i % 99 == 0:
+                    click_fish()
+                    for _ in range(10):
+                        do_buy()
+
+                if i % 999 == 0:
+                    do_powers()
+            else:
+                print("Standby...")
+                sleep(0.5)
