@@ -17,7 +17,6 @@ Requirements:
 
 import win32api
 import win32con
-from itertools import cycle
 from time import sleep
 import PIL.ImageGrab as pg
 import numpy as np
@@ -38,7 +37,7 @@ POWERS = (1001, 360)
 
 IDLE = False
 
-CLICK_PERIOD = 1/2
+CLICK_PERIOD = 1.0 / 50.0
 BUY_PERIOD = 10
 POWERS_PERIOD = 150
 FISH_PERIOD = 60
@@ -80,14 +79,13 @@ def click(x, y):
 
 
 def active():
-    """True if click should be continued"""
     return win32api.GetKeyState(win32con.VK_NUMLOCK)
 
 
 def do_attack():
     """Attack once"""
     click(*ATTACK)
-    sleep(1.0 / 50.0)
+    sleep(CLICK_PERIOD)
 
 
 def do_buy():
