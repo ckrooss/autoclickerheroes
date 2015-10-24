@@ -17,35 +17,56 @@ Requirements:
 
 import win32api
 import win32con
-from time import sleep, time, strftime
+from time import sleep, time
 import PIL.ImageGrab as pg
 import numpy as np
 import cv2
 from threading import Timer, RLock
 import logging
 from datetime import datetime
+from os import listdir, mkdir
+from os.path import exists
+from shutil import move
 
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-# STDOUT
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-ch.set_name("screen")
-ch.setLevel(logging.DEBUG)
+def clean_logfiles():
+    allfiles = listdir(".")
+    logfiles = [f for f in allfiles if f.endswith("_log.txt")]
 
-# LOGFILE
-fh = logging.FileHandler(datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S') + "_log.txt")
-fh.setFormatter(formatter)
-fh.set_name("file")
-fh.setLevel(logging.INFO)
+    if not exists("log"):
+        mkdir("log")
 
-log.addHandler(ch)
-log.addHandler(fh)
+    for f in logfiles:
+        move(f, "log")
+
+
+def setup_logger():
+    clean_logfiles()
+
+    log = logging.getLogger(__name__)
+    log.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+    # STDOUT
+    ch = logging.StreamHandler()
+    ch.setFormatter(formatter)
+    ch.set_name("screen")
+    ch.setLevel(logging.DEBUG)
+
+    # LOGFILE
+    fh = logging.FileHandler(datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S') + "_log.txt")
+    fh.setFormatter(formatter)
+    fh.set_name("file")
+    fh.setLevel(logging.INFO)
+
+    log.addHandler(ch)
+    log.addHandler(fh)
+
+    return log
 
 FISH = cv2.imread("templates/fish.png")
 BANANA = cv2.imread("templates/banana.png")
+LILIN = cv2.imread("templates/lilin.png")
 BEE = cv2.imread("templates/bee.png")
 POWERUP = cv2.imread("templates/powerup.png")
 SKULL = cv2.imread("templates/skull.png")
@@ -67,6 +88,17 @@ COORDINATES = dict()
 scroll_lock = RLock()
 
 
+def logit(func):
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            import traceback
+            log.error("Unknown error: %s", traceback.format_exc())
+
+    return inner
+
+
 def init_coords():
     x, y = find_object(SHOP, "shop")
     COORDINATES["attack"] = (x, y - 200)
@@ -79,7 +111,7 @@ def init_coords():
     COORDINATES["down"] = (x, y)
 
     for name, (x, y) in COORDINATES.items():
-        assert x and y
+        assert x and y, "Could not find Game-Window"
 
 
 def find_object(template, name=""):
@@ -90,7 +122,7 @@ def find_object(template, name=""):
     img = np.array(pg.grab())
     img = img[:, :, ::-1].copy()
     result = cv2.matchTemplate(img, template, method=cv2.TM_CCOEFF_NORMED)
-    _, result = cv2.threshold(result.copy(), 0.9, 1, cv2.THRESH_BINARY)
+    _, result = cv2.threshold(result.copy(), 0.8, 1, cv2.THRESH_BINARY)
 
     _, maxVal, _, maxLoc = cv2.minMaxLoc(result)
 
@@ -101,15 +133,17 @@ def find_object(template, name=""):
         y_center = (2*y + template.shape[0]) / 2
 
         # Debug: View rectangle around template + center circle
-        if name == "":
+        if name == "debug":
             cv2.rectangle(img, (x, y), (x + template.shape[1], y + template.shape[0]), (0, 0, 255), 1)
             cv2.circle(img, (x_center, y_center), 22, (0, 255, 0), 1)
             cv2.imshow("asd", img)
             cv2.waitKey(0)
 
-        # print(name, x, y)
+        print("Found ", name, x, y)
+
         return x_center, y_center
     else:
+        print("Can't find ", name)
         return 0, 0
 
 
@@ -216,14 +250,14 @@ def button_is_active(x, y):
     return r > 100 and g > 150 and b > 100
 
 
-def search_banana(deep=False):
-    COORDINATES["banana"] = None
+def search_hero(hero, deep=False):
+    COORDINATES["hero"] = None
 
     if not deep:
-        x, y = find_object(BANANA, "banana")
+        x, y = find_object(hero, "hero")
 
         if x and y:
-            COORDINATES["banana"] = (x - 400, y)
+            COORDINATES["hero"] = (x - 400, y)
     else:
         scroll_lock.acquire()
 
@@ -232,16 +266,16 @@ def search_banana(deep=False):
         while True:
             scroll_down(n=3)
 
-            x, y = find_object(BANANA, "banana")
+            x, y = find_object(hero, "hero")
 
             if x and y:
-                COORDINATES["banana"] = (x - 400, y)
+                COORDINATES["hero"] = (x - 400, y)
                 break
 
             x, y = find_object(GILD, "gild")
 
             if x and y:
-                log.info("No banana yet")
+                log.info("No hero yet")
                 break
 
         scroll_lock.release()
@@ -252,11 +286,15 @@ def get_best_hero():
 
     scroll_up(n=-1)
     scroll_down(n=-1)
+    sleep(0.5)
     x, y = find_object(GILD, "GILD")
 
     scroll_lock.release()
 
-    return (x - 20, y - 200)
+    if x and y:
+        return (x - 20, y - 200)
+    else:
+        return (0, 0)
 
 
 def upgrade_all():
@@ -273,6 +311,7 @@ def upgrade_all():
     scroll_lock.release()
 
 
+@logit
 def attack_timer():
     while active():
         do_attack()
@@ -280,75 +319,94 @@ def attack_timer():
         return
 
 
+@logit
 def buy_timer():
     log.info("buy timer ticking")
-    search_banana()
+    search_hero(LILIN)
 
-    if COORDINATES.get("banana"):
-        target = COORDINATES["banana"]
+    if COORDINATES.get("hero"):
+        if button_is_active(*COORDINATES["hero"]):
+            target = COORDINATES["hero"]
+        else:
+            target = [0, 0]
     else:
         target = get_best_hero()
 
-    for _ in range(30):
-        do_buy(target)
+    if all(target):
+        for _ in range(30):
+            do_buy(target)
 
-    timers["buy"] = Timer(BUY_PERIOD, buy_timer)
-    timers["buy"].start()
+    if active():
+        timers["buy"] = Timer(BUY_PERIOD, buy_timer)
+        timers["buy"].start()
 
 
+@logit
 def powers_timer():
     log.info("powers timer ticking")
     do_powers()
 
-    timers["powers"] = Timer(POWERS_PERIOD, powers_timer)
-    timers["powers"].start()
+    if active():
+        timers["powers"] = Timer(POWERS_PERIOD, powers_timer)
+        timers["powers"].start()
 
 
+@logit
 def fish_timer():
     log.info("fish timer ticking")
     click_fish()
 
-    timers["fish"] = Timer(FISH_PERIOD, fish_timer)
-    timers["fish"].start()
+    if active():
+        timers["fish"] = Timer(FISH_PERIOD, fish_timer)
+        timers["fish"].start()
 
 
+@logit
 def upgrade_timer():
     log.info("Upgrade timer ticking")
 
     upgrade_all()
 
-    timers["upgrade"] = Timer(UPGRADE_PERIOD, upgrade_timer)
-    timers["upgrade"].start()
+    if active():
+        timers["upgrade"] = Timer(UPGRADE_PERIOD, upgrade_timer)
+        timers["upgrade"].start()
 
 
+@logit
 def seasonal_timer():
     log.info("Seasonal timer ticking")
 
     click_bee()
 
-    timers["seasonal"] = Timer(SEASONAL_PERIOD, seasonal_timer)
-    timers["seasonal"].start()
+    if active():
+        timers["seasonal"] = Timer(SEASONAL_PERIOD, seasonal_timer)
+        timers["seasonal"].start()
 
 
 if __name__ == '__main__':
+    log = setup_logger()
+
     init_coords()
 
-    while not active():
-        log.debug("Stand by...")
-        sleep(0.5)
+    while True:
+        while not active():
+            log.debug("Stand by...")
+            sleep(0.5)
 
-    timers = {"attack": Timer(CLICK_PERIOD, attack_timer),
-              "buy": Timer(BUY_PERIOD, buy_timer),
-              "powers": Timer(POWERS_PERIOD, powers_timer),
-              "fish": Timer(3, fish_timer),
-              "upgrade": Timer(5, lambda: None),
-              "seasonal": Timer(10, seasonal_timer)}
+        timers = {"attack": Timer(CLICK_PERIOD, attack_timer),
+                  "buy": Timer(BUY_PERIOD, buy_timer),
+                  "powers": Timer(POWERS_PERIOD, powers_timer),
+                  "fish": Timer(3, fish_timer),
+                  "upgrade": Timer(5, lambda: None),
+                  "seasonal": Timer(10, seasonal_timer)}
 
-    [t.start() for t in timers.values()]
+        [t.start() for t in timers.values()]
 
-    timers["attack"].join()
+        timers["attack"].join()
 
-    log.info("Canceling timers")
-    [t.cancel() for t in timers.values()]
+        log.info("Canceling timers")
+
+        while any([t.is_alive() for t in timers.values()]):
+            [t.cancel() for t in timers.values()]
 
     log.info("Exiting")
