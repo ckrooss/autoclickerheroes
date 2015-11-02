@@ -15,8 +15,14 @@ Requirements:
     Pillow
 """
 
-import win32api
-import win32con
+try:
+    import win32api
+    import win32con
+    print("Windows Mode")
+except ImportError:
+    pass
+
+from pykeyboard import PyKeyboard
 from time import sleep, time
 import PIL.ImageGrab as pg
 import numpy as np
@@ -64,7 +70,7 @@ def setup_logger():
 
     return log
 
-FISH = cv2.imread("templates/fish.png")
+FISH = cv2.imread("templates/candy.png")
 BANANA = cv2.imread("templates/banana.png")
 LILIN = cv2.imread("templates/lilin.png")
 BEE = cv2.imread("templates/bee.png")
@@ -111,7 +117,9 @@ def init_coords():
     COORDINATES["down"] = (x, y)
 
     for name, (x, y) in COORDINATES.items():
-        assert x and y, "Could not find Game-Window"
+        if not (x and y):
+            log.error("Could not find Game-Window")
+            exit(0)
 
 
 def find_object(template, name=""):
@@ -139,11 +147,11 @@ def find_object(template, name=""):
             cv2.imshow("asd", img)
             cv2.waitKey(0)
 
-        print("Found ", name, x, y)
+        log.debug("Found {name} at {x} {y}".format(name=name, x=x, y=y))
 
         return x_center, y_center
     else:
-        print("Can't find ", name)
+        log.debug("Can't find {name}".format(name=name))
         return 0, 0
 
 
@@ -246,8 +254,11 @@ def button_is_active(x, y):
     # ON ~ [254 250 214]
     # OFF ~ [0 99 69]
     r, g, b = get_pixel_values(x, y)
-
-    return r > 100 and g > 150 and b > 100
+    if (r > 100 and g > 150 and b > 100):
+        return True
+    else:
+        log.debug("Button at %s/%s is deactivated (%s, %s, %s)" % (x, y, r, g, b))
+        return True
 
 
 def search_hero(hero, deep=False):
@@ -328,13 +339,16 @@ def buy_timer():
         if button_is_active(*COORDINATES["hero"]):
             target = COORDINATES["hero"]
         else:
+            log.debug("Not buying, not enough money")
             target = [0, 0]
     else:
         target = get_best_hero()
 
     if all(target):
-        for _ in range(30):
-            do_buy(target)
+        kbd = PyKeyboard()
+        kbd.press_key("q")
+        do_buy(target)
+        kbd.release_key("q")
 
     if active():
         timers["buy"] = Timer(BUY_PERIOD, buy_timer)
