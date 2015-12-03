@@ -3,7 +3,12 @@ python:
   - "2.7"
   - "3.5"
 install:
-  - apt-get install -qy libopencv-dev python-opencv
   - pip install -r requirements.txt
+addons:
+  apt:
+    packages:
+    - libopencv-dev
+    - python-opencv
+
 script: nosetests
 
