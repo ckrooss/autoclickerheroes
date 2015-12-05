@@ -5,15 +5,11 @@ The ClickerHeroesAutoclicker plays CLickerHeroes (https://www.clickerheroes.com)
 It attacks at maximum speed, buys hero upgrades, activates your powers
 and even clicks the collectable fish.
 
+Installation:
+    use pip install -r requirements.txt to install dependencies
+
 Usage:
     Activate the NUMLOCK LED on your keyboard to activate the bot. Deactive it to pause the bot.
-
-Requirements:
-    Windows
-    pywin32
-    opencv3
-    numpy
-    Pillow
 """
 from __future__ import unicode_literals, print_function
 from time import sleep, time
@@ -23,15 +19,16 @@ from datetime import datetime
 from os import listdir, mkdir
 from os.path import exists
 from shutil import move
+import ctypes
 
 try:
-    import win32api
-    import win32con
-    print("Windows Mode")
+    USER32 = ctypes.WinDLL ("User32.dll")
+    print("Running on win32")
 except ImportError:
-    print("Non-Windows Mode")
+    print("Not running on win32")
 
 from pykeyboard import PyKeyboard
+from pymouse import PyMouse
 import PIL.ImageGrab as pg
 import numpy as np
 import cv2
@@ -99,7 +96,7 @@ COORDINATES = dict()
 SCROLL_LOCK = RLock()
 
 
-def logit(func):
+def logit(func, **kwargs):
     """
     Decorator to wrap a function into a logging try-catch block
     You can use it to prevent timers from dying
@@ -139,6 +136,10 @@ def find_object(template, name=""):
     """
     img = np.array(pg.grab())
     img = img[:, :, ::-1].copy()
+    
+    if img.shape != (1080, 1920):
+        img = cv2.resize(img, (1920, 1080), interpolation=cv2.INTER_AREA)
+
     result = cv2.matchTemplate(img, template, method=cv2.TM_CCOEFF_NORMED)
     _, result = cv2.threshold(result.copy(), 0.9, 1, cv2.THRESH_BINARY)
 
@@ -174,17 +175,14 @@ def get_pixel_values(x, y):
 
 def click(x, y):
     """Single left click at x/y"""
-    try:
-        win32api.SetCursorPos((x, y))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
-    except NameError:
-        print("Clicking not supported on non-windows yet (Xlib support pending)")
+    m = PyMouse()
+    m.click(x, y, 1)
 
 
 def active():
     """True if numlock is on"""
-    return win32api.GetKeyState(win32con.VK_NUMLOCK)
+    # VK_NUMLOCK is 0x90
+    return USER32.GetKeyState(0x90)
 
 
 def do_attack():
@@ -433,6 +431,7 @@ def seasonal_timer():
 if __name__ == '__main__':
     log = setup_logger()
 
+    raw_input()
     init_coords()
 
     while True:
