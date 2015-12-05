@@ -70,8 +70,9 @@ def setup_logger():
 
     return log
 
-FISH = cv2.imread("templates/candy.png")
+FISH = cv2.imread("templates/fish.png")
 BANANA = cv2.imread("templates/banana.png")
+PIE = cv2.imread("templates/pie.png")
 LILIN = cv2.imread("templates/lilin.png")
 BEE = cv2.imread("templates/bee.png")
 POWERUP = cv2.imread("templates/powerup.png")
@@ -130,7 +131,7 @@ def find_object(template, name=""):
     img = np.array(pg.grab())
     img = img[:, :, ::-1].copy()
     result = cv2.matchTemplate(img, template, method=cv2.TM_CCOEFF_NORMED)
-    _, result = cv2.threshold(result.copy(), 0.8, 1, cv2.THRESH_BINARY)
+    _, result = cv2.threshold(result.copy(), 0.9, 1, cv2.THRESH_BINARY)
 
     _, maxVal, _, maxLoc = cv2.minMaxLoc(result)
 
@@ -197,7 +198,7 @@ def do_powers():
 
 def click_fish():
     """Find and click the fish-clickable"""
-    x, y = find_object(FISH, "fish")
+    x, y = find_object(PIE, "pie")
 
     if x and y:
         click(x, y)
