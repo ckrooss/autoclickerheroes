@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 The ClickerHeroesAutoclicker plays CLickerHeroes (https://www.clickerheroes.com) for you.
-It attacks at maximum speed, buys hero upgrades, activates your powers and even clicks the collectable fish.
+It attacks at maximum speed, buys hero upgrades, activates your powers
+and even clicks the collectable fish.
 
 Usage:
     Activate the NUMLOCK LED on your keyboard to activate the bot. Deactive it to pause the bot.
@@ -14,19 +15,8 @@ Requirements:
     numpy
     Pillow
 """
-
-try:
-    import win32api
-    import win32con
-    print("Windows Mode")
-except ImportError:
-    pass
-
-from pykeyboard import PyKeyboard
+from __future__ import unicode_literals, print_function
 from time import sleep, time
-import PIL.ImageGrab as pg
-import numpy as np
-import cv2
 from threading import Timer, RLock
 import logging
 from datetime import datetime
@@ -34,41 +24,55 @@ from os import listdir, mkdir
 from os.path import exists
 from shutil import move
 
+try:
+    import win32api
+    import win32con
+    print("Windows Mode")
+except ImportError:
+    print("Non-Windows Mode")
+
+from pykeyboard import PyKeyboard
+import PIL.ImageGrab as pg
+import numpy as np
+import cv2
+
 
 def clean_logfiles():
+    """Move old logfiles into "log" directiory"""
     allfiles = listdir(".")
     logfiles = [f for f in allfiles if f.endswith("_log.txt")]
 
     if not exists("log"):
         mkdir("log")
 
-    for f in logfiles:
-        move(f, "log")
+    for logfile in logfiles:
+        move(logfile, "log")
 
 
 def setup_logger():
+    """Create logger with default loglevels and file + stdout handler"""
     clean_logfiles()
 
-    log = logging.getLogger(__name__)
-    log.setLevel(logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
     # STDOUT
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    ch.set_name("screen")
-    ch.setLevel(logging.DEBUG)
+    stdout_handler = logging.StreamHandler()
+    stdout_handler.setFormatter(formatter)
+    stdout_handler.set_name("screen")
+    stdout_handler.setLevel(logging.DEBUG)
 
     # LOGFILE
-    fh = logging.FileHandler(datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S') + "_log.txt")
-    fh.setFormatter(formatter)
-    fh.set_name("file")
-    fh.setLevel(logging.INFO)
+    file_handler = logging.FileHandler(datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S') + "_log.txt")
+    file_handler.setFormatter(formatter)
+    file_handler.set_name("file")
+    file_handler.setLevel(logging.INFO)
 
-    log.addHandler(ch)
-    log.addHandler(fh)
+    logger.addHandler(stdout_handler)
+    logger.addHandler(file_handler)
 
-    return log
+    return logger
 
 FISH = cv2.imread("templates/fish.png")
 BANANA = cv2.imread("templates/banana.png")
@@ -92,10 +96,14 @@ SEASONAL_PERIOD = 10
 
 COORDINATES = dict()
 
-scroll_lock = RLock()
+SCROLL_LOCK = RLock()
 
 
 def logit(func):
+    """
+    Decorator to wrap a function into a logging try-catch block
+    You can use it to prevent timers from dying
+    """
     def inner(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -107,6 +115,7 @@ def logit(func):
 
 
 def init_coords():
+    """Find required coords, exit if game window is not found"""
     x, y = find_object(SHOP, "shop")
     COORDINATES["attack"] = (x, y - 200)
 
@@ -133,10 +142,10 @@ def find_object(template, name=""):
     result = cv2.matchTemplate(img, template, method=cv2.TM_CCOEFF_NORMED)
     _, result = cv2.threshold(result.copy(), 0.9, 1, cv2.THRESH_BINARY)
 
-    _, maxVal, _, maxLoc = cv2.minMaxLoc(result)
+    _, max_value, _, max_location = cv2.minMaxLoc(result)
 
-    if maxVal:
-        x, y = maxLoc
+    if max_value:
+        x, y = max_location
 
         x_center = (2*x + template.shape[1]) / 2
         y_center = (2*y + template.shape[0]) / 2
@@ -157,23 +166,29 @@ def find_object(template, name=""):
 
 
 def get_pixel_values(x, y):
+    """Returns RGB Values for a pixel at x/y"""
     img = np.array(pg.grab())
     img = img[:, :, ::-1].copy()
     return img[y, x]
 
 
 def click(x, y):
-    win32api.SetCursorPos((x, y))
-    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+    """Single left click at x/y"""
+    try:
+        win32api.SetCursorPos((x, y))
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+    except NameError:
+        print("Clicking not supported on non-windows yet (Xlib support pending)")
 
 
 def active():
+    """True if numlock is on"""
     return win32api.GetKeyState(win32con.VK_NUMLOCK)
 
 
 def do_attack():
-    """Attack once"""
+    """Attack the enemy once"""
     click(*COORDINATES["attack"])
     sleep(CLICK_PERIOD)
 
@@ -206,6 +221,7 @@ def click_fish():
 
 
 def click_bee():
+    """Find and click the (seasonal) bee flying across the screen"""
     x, y = find_object(BEE, "bee")
 
     if x and y:
@@ -215,7 +231,8 @@ def click_bee():
 
 
 def scroll_up(n=1):
-    scroll_lock.acquire()
+    """Scroll up n times"""
+    SCROLL_LOCK.acquire()
     up = COORDINATES["up"]
     if n > 0:
 
@@ -230,11 +247,12 @@ def scroll_up(n=1):
         click(*up)
         sleep(0.3)
 
-    scroll_lock.release()
+    SCROLL_LOCK.release()
 
 
 def scroll_down(n=1):
-    scroll_lock.acquire()
+    """Scroll up n times"""
+    SCROLL_LOCK.acquire()
     down = COORDINATES["down"]
     if n > 0:
         for _ in range(n):
@@ -248,21 +266,27 @@ def scroll_down(n=1):
         click(*down)
         sleep(0.3)
 
-    scroll_lock.release()
+    SCROLL_LOCK.release()
 
 
 def button_is_active(x, y):
+    """True if the button at x/y is clickable"""
     # ON ~ [254 250 214]
     # OFF ~ [0 99 69]
     r, g, b = get_pixel_values(x, y)
-    if (r > 100 and g > 150 and b > 100):
+    if r > 100 and g > 150 and b > 100:
         return True
     else:
-        log.debug("Button at %s/%s is deactivated (%s, %s, %s)" % (x, y, r, g, b))
+        log.debug("Button at {x}/{y} is deactivated ({r}, {g}, {b})".format(x=x, y=y, r=r, g=g, b=b))
         return True
 
 
 def search_hero(hero, deep=False):
+    """
+    Search specified hero and set coordinates in COORDINATES["hero"]
+    if deep, search the complete list of heroes, else only the visible part
+    """
+
     COORDINATES["hero"] = None
 
     if not deep:
@@ -271,7 +295,7 @@ def search_hero(hero, deep=False):
         if x and y:
             COORDINATES["hero"] = (x - 400, y)
     else:
-        scroll_lock.acquire()
+        SCROLL_LOCK.acquire()
 
         scroll_up(n=-1)
 
@@ -290,18 +314,19 @@ def search_hero(hero, deep=False):
                 log.info("No hero yet")
                 break
 
-        scroll_lock.release()
+        SCROLL_LOCK.release()
 
 
 def get_best_hero():
-    scroll_lock.acquire()
+    """Search for the best available hero (bottom hero)"""
+    SCROLL_LOCK.acquire()
 
     scroll_up(n=-1)
     scroll_down(n=-1)
     sleep(0.5)
     x, y = find_object(GILD, "GILD")
 
-    scroll_lock.release()
+    SCROLL_LOCK.release()
 
     if x and y:
         return (x - 20, y - 200)
@@ -310,7 +335,8 @@ def get_best_hero():
 
 
 def upgrade_all():
-    scroll_lock.acquire()
+    """Click the upgrade all button once"""
+    SCROLL_LOCK.acquire()
 
     scroll_up(n=-1)
     scroll_down(n=-1)
@@ -320,11 +346,12 @@ def upgrade_all():
     if x and y:
         click(x, y)
 
-    scroll_lock.release()
+    SCROLL_LOCK.release()
 
 
 @logit
 def attack_timer():
+    """Endlessly attack, does not return until exit"""
     while active():
         do_attack()
     else:
@@ -333,6 +360,7 @@ def attack_timer():
 
 @logit
 def buy_timer():
+    """Upgrade the current hero and re-schedule self"""
     log.info("buy timer ticking")
     search_hero(LILIN)
 
@@ -358,6 +386,7 @@ def buy_timer():
 
 @logit
 def powers_timer():
+    """Activate powers and re-schedule self"""
     log.info("powers timer ticking")
     do_powers()
 
@@ -368,6 +397,7 @@ def powers_timer():
 
 @logit
 def fish_timer():
+    """Search + click fish and re-schedule self"""
     log.info("fish timer ticking")
     click_fish()
 
@@ -378,6 +408,7 @@ def fish_timer():
 
 @logit
 def upgrade_timer():
+    """Click upgrade button and re-schedule self"""
     log.info("Upgrade timer ticking")
 
     upgrade_all()
@@ -389,6 +420,7 @@ def upgrade_timer():
 
 @logit
 def seasonal_timer():
+    """Search + click seasonal clickable and re-schedule self"""
     log.info("Seasonal timer ticking")
 
     click_bee()
