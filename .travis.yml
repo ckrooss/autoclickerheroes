@@ -9,6 +9,8 @@ addons:
     packages:
     - libopencv-dev
     - python-opencv
+    - python-xlib
+    - python3-xlib
 
 script: nosetests
 
