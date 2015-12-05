@@ -40,7 +40,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="click.py" />
-    <EntityDeploy Include="test_click.py" />
+    <Compile Include="test_click.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="templates" />
