@@ -22,9 +22,9 @@ from shutil import move
 import ctypes
 
 try:
-    USER32 = ctypes.WinDLL ("User32.dll")
+    USER32 = ctypes.WinDLL("User32.dll")
     print("Running on win32")
-except ImportError:
+except AttributeError:
     print("Not running on win32")
 
 from pykeyboard import PyKeyboard
@@ -136,9 +136,13 @@ def find_object(template, name=""):
     """
     img = np.array(pg.grab())
     img = img[:, :, ::-1].copy()
-    
-    if img.shape != (1080, 1920):
+
+    if img.shape[0] != 1080:
         img = cv2.resize(img, (1920, 1080), interpolation=cv2.INTER_AREA)
+
+    if img.shape[2] != 3:
+        a, b, g, r = cv2.split(img)
+        img = cv2.merge([b, g, r])
 
     result = cv2.matchTemplate(img, template, method=cv2.TM_CCOEFF_NORMED)
     _, result = cv2.threshold(result.copy(), 0.9, 1, cv2.THRESH_BINARY)
@@ -153,7 +157,12 @@ def find_object(template, name=""):
 
         # Debug: View rectangle around template + center circle
         if name == "debug":
-            cv2.rectangle(img, (x, y), (x + template.shape[1], y + template.shape[0]), (0, 0, 255), 1)
+            cv2.rectangle(img=img,
+                          pt1=(x, y),
+                          pt2=(x + template.shape[1], y + template.shape[0]),
+                          color=(0, 0, 255),
+                          thickness=1)
+
             cv2.circle(img, (x_center, y_center), 22, (0, 255, 0), 1)
             cv2.imshow("asd", img)
             cv2.waitKey(0)
@@ -275,7 +284,7 @@ def button_is_active(x, y):
     if r > 100 and g > 150 and b > 100:
         return True
     else:
-        log.debug("Button at {x}/{y} is deactivated ({r}, {g}, {b})".format(x=x, y=y, r=r, g=g, b=b))
+        log.debug("Button at {x}/{y} is deactivated ({r}, {g}, {b})".format(**locals()))
         return True
 
 
@@ -431,7 +440,6 @@ def seasonal_timer():
 if __name__ == '__main__':
     log = setup_logger()
 
-    raw_input()
     init_coords()
 
     while True:

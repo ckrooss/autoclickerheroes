@@ -6,11 +6,12 @@ install:
   - pip install -r requirements.txt
 addons:
   apt:
+    sources:
+    - ubuntu
     packages:
     - libopencv-dev
     - python-opencv
     - python-xlib
-    - python3-xlib
 
 script: nosetests
 

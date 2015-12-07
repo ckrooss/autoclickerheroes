@@ -1,5 +1,9 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals, print_function
 import unittest
 import mock
+
 
 class TestCases(unittest.TestCase):
 
@@ -27,9 +31,6 @@ class TestCases(unittest.TestCase):
         failing_function()
 
         self.assertTrue(log.called)
-
-
-
 
 if __name__ == '__main__':
     unittest.main()
