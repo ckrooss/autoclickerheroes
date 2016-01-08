@@ -73,7 +73,10 @@ def setup_logger():
 
 FISH = cv2.imread("templates/fish.png")
 BANANA = cv2.imread("templates/banana.png")
+ALABASTER = cv2.imread("templates/alabaster.png")
 PIE = cv2.imread("templates/pie.png")
+CANDY = cv2.imread("templates/candy.png")
+CCANDY = cv2.imread("templates/christmas_candy.png")
 LILIN = cv2.imread("templates/lilin.png")
 BEE = cv2.imread("templates/bee.png")
 POWERUP = cv2.imread("templates/powerup.png")
@@ -219,7 +222,7 @@ def do_powers():
 
 
 def click_fish():
-    """Find and click the fish-clickable"""
+    """Find and click the clickable"""
     x, y = find_object(PIE, "pie")
 
     if x and y:

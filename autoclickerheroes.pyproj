@@ -11,7 +11,7 @@
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <InterpreterId>{3d4ce6d6-19d5-4bdc-970a-63ab333f2d63}</InterpreterId>
+    <InterpreterId>{b8385c97-a619-43fe-9152-3605ac72f0d1}</InterpreterId>
     <InterpreterVersion>2.7</InterpreterVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
@@ -48,11 +48,11 @@
     <Folder Include="templates" />
   </ItemGroup>
   <ItemGroup>
-    <Interpreter Include="autoclicker\">
-      <Id>{3d4ce6d6-19d5-4bdc-970a-63ab333f2d63}</Id>
+    <Interpreter Include="venv\">
+      <Id>{b8385c97-a619-43fe-9152-3605ac72f0d1}</Id>
       <BaseInterpreter>{2af0f10d-7135-4994-9156-5d01c9c11b7e}</BaseInterpreter>
       <Version>2.7</Version>
-      <Description>autoclicker (Python 2.7)</Description>
+      <Description>venv (Python 2.7)</Description>
       <InterpreterPath>Scripts\python.exe</InterpreterPath>
       <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
       <LibraryPath>Lib\</LibraryPath>
