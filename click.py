@@ -34,6 +34,35 @@ import numpy as np
 import cv2
 
 
+# Global Variables
+FISH = cv2.imread("templates/fish.png")
+BANANA = cv2.imread("templates/banana.png")
+ALABASTER = cv2.imread("templates/alabaster.png")
+PIE = cv2.imread("templates/pie.png")
+CANDY = cv2.imread("templates/candy.png")
+CCANDY = cv2.imread("templates/christmas_candy.png")
+LILIN = cv2.imread("templates/lilin.png")
+BEE = cv2.imread("templates/bee.png")
+POWERUP = cv2.imread("templates/powerup.png")
+SKULL = cv2.imread("templates/skull.png")
+DOWN = cv2.imread("templates/down.png")
+UP = cv2.imread("templates/up.png")
+GILD = cv2.imread("templates/gild.png")
+SHOP = cv2.imread("templates/shop.png")
+UPGRADE = cv2.imread("templates/upgrade.png")
+
+CLICK_PERIOD = 1.0 / 50.0
+BUY_PERIOD = 10
+POWERS_PERIOD = 150
+FISH_PERIOD = 5
+UPGRADE_PERIOD = 300
+SEASONAL_PERIOD = 5
+
+COORDINATES = dict()
+
+SCROLL_LOCK = RLock()
+
+
 def clean_logfiles():
     """Move old logfiles into "log" directiory"""
     allfiles = listdir(".")
@@ -70,33 +99,6 @@ def setup_logger():
     logger.addHandler(file_handler)
 
     return logger
-
-FISH = cv2.imread("templates/fish.png")
-BANANA = cv2.imread("templates/banana.png")
-ALABASTER = cv2.imread("templates/alabaster.png")
-PIE = cv2.imread("templates/pie.png")
-CANDY = cv2.imread("templates/candy.png")
-CCANDY = cv2.imread("templates/christmas_candy.png")
-LILIN = cv2.imread("templates/lilin.png")
-BEE = cv2.imread("templates/bee.png")
-POWERUP = cv2.imread("templates/powerup.png")
-SKULL = cv2.imread("templates/skull.png")
-DOWN = cv2.imread("templates/down.png")
-UP = cv2.imread("templates/up.png")
-GILD = cv2.imread("templates/gild.png")
-SHOP = cv2.imread("templates/shop.png")
-UPGRADE = cv2.imread("templates/upgrade.png")
-
-CLICK_PERIOD = 1.0 / 50.0
-BUY_PERIOD = 10
-POWERS_PERIOD = 150
-FISH_PERIOD = 60
-UPGRADE_PERIOD = 300
-SEASONAL_PERIOD = 10
-
-COORDINATES = dict()
-
-SCROLL_LOCK = RLock()
 
 
 def logit(func, **kwargs):
@@ -223,7 +225,7 @@ def do_powers():
 
 def click_fish():
     """Find and click the clickable"""
-    x, y = find_object(PIE, "pie")
+    x, y = find_object(FISH, "fish")
 
     if x and y:
         click(x, y)
@@ -242,41 +244,37 @@ def click_bee():
 
 def scroll_up(n=1):
     """Scroll up n times"""
-    SCROLL_LOCK.acquire()
-    up = COORDINATES["up"]
-    if n > 0:
+    with SCROLL_LOCK:
+        up = COORDINATES["up"]
+        if n > 0:
 
-        for _ in range(n):
+            for _ in range(n):
+                click(*up)
+                sleep(CLICK_PERIOD)
+
+            sleep(0.01 * n)
+
+        else:
+            up = up[0], up[1] + 50
             click(*up)
-            sleep(CLICK_PERIOD)
-
-        sleep(0.01 * n)
-
-    else:
-        up = up[0], up[1] + 50
-        click(*up)
-        sleep(0.3)
-
-    SCROLL_LOCK.release()
+            sleep(0.3)
 
 
 def scroll_down(n=1):
     """Scroll up n times"""
-    SCROLL_LOCK.acquire()
-    down = COORDINATES["down"]
-    if n > 0:
-        for _ in range(n):
+    with SCROLL_LOCK:
+        down = COORDINATES["down"]
+        if n > 0:
+            for _ in range(n):
+                click(*down)
+                sleep(CLICK_PERIOD)
+
+            sleep(0.01 * n)
+
+        else:
+            down = down[0], down[1] - 50
             click(*down)
-            sleep(CLICK_PERIOD)
-
-        sleep(0.01 * n)
-
-    else:
-        down = down[0], down[1] - 50
-        click(*down)
-        sleep(0.3)
-
-    SCROLL_LOCK.release()
+            sleep(0.3)
 
 
 def button_is_active(x, y):
@@ -304,9 +302,10 @@ def search_hero(hero, deep=False):
 
         if x and y:
             COORDINATES["hero"] = (x - 400, y)
-    else:
-        SCROLL_LOCK.acquire()
 
+        return
+
+    with SCROLL_LOCK:
         scroll_up(n=-1)
 
         while True:
@@ -316,27 +315,22 @@ def search_hero(hero, deep=False):
 
             if x and y:
                 COORDINATES["hero"] = (x - 400, y)
-                break
+                return
 
             x, y = find_object(GILD, "gild")
 
             if x and y:
-                log.info("No hero yet")
-                break
-
-        SCROLL_LOCK.release()
+                log.info("Hero not available yet")
+                return
 
 
 def get_best_hero():
     """Search for the best available hero (bottom hero)"""
-    SCROLL_LOCK.acquire()
-
-    scroll_up(n=-1)
-    scroll_down(n=-1)
-    sleep(0.5)
-    x, y = find_object(GILD, "GILD")
-
-    SCROLL_LOCK.release()
+    with SCROLL_LOCK:
+        scroll_up(n=-1)
+        scroll_down(n=-1)
+        sleep(0.5)
+        x, y = find_object(GILD, "GILD")
 
     if x and y:
         return (x - 20, y - 200)
@@ -346,17 +340,14 @@ def get_best_hero():
 
 def upgrade_all():
     """Click the upgrade all button once"""
-    SCROLL_LOCK.acquire()
+    with SCROLL_LOCK:
+        scroll_up(n=-1)
+        scroll_down(n=-1)
 
-    scroll_up(n=-1)
-    scroll_down(n=-1)
+        x, y = find_object(UPGRADE, "upgrade all")
 
-    x, y = find_object(UPGRADE, "upgrade all")
-
-    if x and y:
-        click(x, y)
-
-    SCROLL_LOCK.release()
+        if x and y:
+            click(x, y)
 
 
 @logit
@@ -461,7 +452,7 @@ if __name__ == '__main__':
 
         timers["attack"].join()
 
-        log.info("Canceling timers")
+        log.debug("Canceling timers")
 
         while any([t.is_alive() for t in timers.values()]):
             [t.cancel() for t in timers.values()]
