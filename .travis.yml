@@ -13,7 +13,7 @@ addons:
     - libopencv-dev		
     - python-opencv		
     - python-xlib
-	- scrot
+    - scrot
     
 script: nosetests
 
