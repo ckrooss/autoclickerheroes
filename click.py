@@ -29,7 +29,7 @@ except AttributeError:
 
 from pykeyboard import PyKeyboard
 from pymouse import PyMouse
-import PIL.ImageGrab as pg
+import pyscreenshot as pg
 import numpy as np
 import cv2
 

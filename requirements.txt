@@ -2,3 +2,4 @@ pyuserinput
 Pillow
 numpy
 nose
+pyscreenshot
