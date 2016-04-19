@@ -33,15 +33,17 @@ import pyscreenshot as pg
 import numpy as np
 import cv2
 
+# Old seasonal items
+# PIE = cv2.imread("templates/pie.png")
+# SACK = cv2.imread("templates/sack.png")
+# CANDY = cv2.imread("templates/candy.png")
+# CCANDY = cv2.imread("templates/christmas_candy.png")
+
 
 # Global Variables
 FISH = cv2.imread("templates/fish.png")
 BANANA = cv2.imread("templates/banana.png")
 ALABASTER = cv2.imread("templates/alabaster.png")
-PIE = cv2.imread("templates/pie.png")
-SACK = cv2.imread("templates/sack.png")
-CANDY = cv2.imread("templates/candy.png")
-CCANDY = cv2.imread("templates/christmas_candy.png")
 LILIN = cv2.imread("templates/lilin.png")
 BEE = cv2.imread("templates/bee.png")
 POWERUP = cv2.imread("templates/powerup.png")
@@ -52,12 +54,14 @@ GILD = cv2.imread("templates/gild.png")
 SHOP = cv2.imread("templates/shop.png")
 UPGRADE = cv2.imread("templates/upgrade.png")
 
+SEASONAL = FISH
+
 CLICK_PERIOD = 1.0 / 50.0
 BUY_PERIOD = 10
 POWERS_PERIOD = 150
-FISH_PERIOD = 5
-UPGRADE_PERIOD = 300
 SEASONAL_PERIOD = 5
+UPGRADE_PERIOD = 300
+BEE_PERIOD = 5
 
 COORDINATES = dict()
 
@@ -224,9 +228,9 @@ def do_powers():
         sleep(CLICK_PERIOD)
 
 
-def click_fish():
-    """Find and click the clickable fish"""
-    x, y = find_object(FISH, "Fisch")
+def click_seasonal():
+    """Find and click the seasonally changing clickable"""
+    x, y = find_object(SEASONAL, "Seasonal")
 
     if x and y:
         click(x, y)
@@ -234,7 +238,7 @@ def click_fish():
 
 
 def click_bee():
-    """Find and click the (seasonal) bee flying across the screen"""
+    """Find and click the bee flying across the screen"""
     x, y = find_object(BEE, "bee")
 
     if x and y:
@@ -398,14 +402,14 @@ def powers_timer():
 
 
 @logit
-def fish_timer():
-    """Search + click fish and re-schedule self"""
-    log.info("fish timer ticking")
-    click_fish()
+def seasonal_timer():
+    """Search + click seasonal and re-schedule self"""
+    log.info("seasonal timer ticking")
+    click_seasonal()
 
     if active():
-        timers["fish"] = Timer(FISH_PERIOD, fish_timer)
-        timers["fish"].start()
+        timers["seasonal"] = Timer(SEASONAL_PERIOD, seasonal_timer)
+        timers["seasonal"].start()
 
 
 @logit
@@ -421,15 +425,15 @@ def upgrade_timer():
 
 
 @logit
-def seasonal_timer():
-    """Search + click seasonal clickable and re-schedule self"""
-    log.info("Seasonal timer ticking")
+def bee_timer():
+    """Search + click bee and re-schedule self"""
+    log.info("Bee timer ticking")
 
     click_bee()
 
     if active():
-        timers["seasonal"] = Timer(SEASONAL_PERIOD, seasonal_timer)
-        timers["seasonal"].start()
+        timers["bee"] = Timer(BEE_PERIOD, bee_timer)
+        timers["bee"].start()
 
 
 if __name__ == '__main__':
@@ -445,9 +449,9 @@ if __name__ == '__main__':
         timers = {"attack": Timer(CLICK_PERIOD, attack_timer),
                   "buy": Timer(BUY_PERIOD, buy_timer),
                   "powers": Timer(POWERS_PERIOD, powers_timer),
-                  "fish": Timer(3, fish_timer),
+                  "seasonal": Timer(3, seasonal_timer),
                   "upgrade": Timer(5, lambda: None),
-                  "seasonal": Timer(10, seasonal_timer)}
+                  "bee": Timer(10, bee_timer)}
 
         [t.start() for t in timers.values()]
 
