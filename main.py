@@ -39,6 +39,7 @@ FISH = cv2.imread("templates/fish.png")
 BANANA = cv2.imread("templates/banana.png")
 ALABASTER = cv2.imread("templates/alabaster.png")
 PIE = cv2.imread("templates/pie.png")
+SACK = cv2.imread("templates/sack.png")
 CANDY = cv2.imread("templates/candy.png")
 CCANDY = cv2.imread("templates/christmas_candy.png")
 LILIN = cv2.imread("templates/lilin.png")
@@ -224,8 +225,8 @@ def do_powers():
 
 
 def click_fish():
-    """Find and click the clickable"""
-    x, y = find_object(FISH, "fish")
+    """Find and click the clickable fish"""
+    x, y = find_object(FISH, "Fisch")
 
     if x and y:
         click(x, y)
