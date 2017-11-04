@@ -11,60 +11,58 @@ Installation:
 Usage:
     Activate the NUMLOCK LED on your keyboard to activate the bot. Deactive it to pause the bot.
 """
+
 from __future__ import unicode_literals, print_function
-from time import sleep, time
+from time import sleep
 from threading import Timer, RLock
-import logging
-from datetime import datetime
-from os import listdir, mkdir
-from os.path import exists
-from shutil import move
 import ctypes
-
-try:
-    USER32 = ctypes.WinDLL("User32.dll")
-    from win32gui import GetWindowText, GetForegroundWindow
-except AttributeError:
-    pass
-
+import traceback
+from win32gui import GetWindowText, GetForegroundWindow
 from pykeyboard import PyKeyboard
 from pymouse import PyMouse
 import pyscreenshot as pg
 import numpy as np
 import cv2
+import logging
+USER32 = ctypes.WinDLL("User32.dll")
+FORMAT = '%(asctime)-15s [%(name)s] [%(levelname)s] %(message)s'
+logging.basicConfig(format=FORMAT, level=logging.WARN)
+log = logging.getLogger(__name__)
 
-# Old seasonal items
-# PIE = cv2.imread("templates/pie.png")
-# SACK = cv2.imread("templates/sack.png")
-# CANDY = cv2.imread("templates/candy.png")
-# CCANDY = cv2.imread("templates/christmas_candy.png")
 
-# Global Variables
-FISH = ("Fish", cv2.imread("templates/fish.png"))
+# Templates
+# Seasonal Items
+PIE = cv2.imread("templates/pie.png")
+SACK = cv2.imread("templates/sack.png")
+CANDY = cv2.imread("templates/candy.png")
+CHRISTMASCANDY = cv2.imread("templates/christmas_candy.png")
+
+# Heroes
 BANANA = ("Banana", cv2.imread("templates/banana.png"))
 ALABASTER = ("Alabaster", cv2.imread("templates/alabaster.png"))
 CADMIA = ("Cadmia", cv2.imread("templates/cadmia.png"))
 LILIN = ("Lilin", cv2.imread("templates/lilin.png"))
 BETTY = ("Betty", cv2.imread("templates/betty.png"))
 BEE = ("Bee", cv2.imread("templates/bee.png"))
-POWERUP = ("Powerup", cv2.imread("templates/powerup.png"))
-SKULL = ("Skull", cv2.imread("templates/skull.png"))
-DOWN = ("Down", cv2.imread("templates/down.png"))
-UP = ("Up", cv2.imread("templates/up.png"))
-GILD = ("Gild", cv2.imread("templates/gild.png"))
-SHOP = ("Shop", cv2.imread("templates/shop.png"))
-UPGRADE = ("Upgrade", cv2.imread("templates/upgrade.png"))
-NOAUTO = ("No automatic progress", cv2.imread("templates/noauto.png"))
 MAX = ("Bomber Max", cv2.imread("templates/max.png"))
 MOLOCH = ("Moloch", cv2.imread("templates/moloch.png"))
 GOG = ("Gog", cv2.imread("templates/gog.png"))
 MIDAS = ("Midas", cv2.imread("templates/midas.png"))
 
+# Misc
+FISH = ("Fish", cv2.imread("templates/fish.png"))
+NOAUTO = ("No automatic progress", cv2.imread("templates/noauto.png"))
+GILD = ("Gild", cv2.imread("templates/gild.png"))
+SHOP = ("Shop", cv2.imread("templates/shop.png"))
+UPGRADE = ("Upgrade", cv2.imread("templates/upgrade.png"))
+POWERUP = ("Powerup", cv2.imread("templates/powerup.png"))
+SKULL = ("Skull", cv2.imread("templates/skull.png"))
+DOWN = ("Down", cv2.imread("templates/down.png"))
+UP = ("Up", cv2.imread("templates/up.png"))
 
-ACTIVE_HERO = MIDAS  # ALABASTER
-
+# Config
+ACTIVE_HERO = MIDAS
 SEASONAL = FISH
-
 CLICK_PERIOD = 1.0 / 50.0
 BUY_PERIOD = 10
 POWERS_PERIOD = 150
@@ -78,56 +76,34 @@ COORDINATES = dict()
 SCROLL_LOCK = RLock()
 
 
-def clean_logfiles():
-    """Move old logfiles into "log" directory"""
-    logfiles = [f for f in listdir(".") if f.endswith("_log.txt")]
-
-    if not exists("log"):
-        mkdir("log")
-
-    for logfile in logfiles:
-        move(logfile, "log")
-
-
-def setup_logger():
-    """Create logger with default loglevels and file + stdout handler"""
-    clean_logfiles()
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-
-    # STDOUT
-    stdout_handler = logging.StreamHandler()
-    stdout_handler.setFormatter(formatter)
-    stdout_handler.set_name("screen")
-    stdout_handler.setLevel(logging.DEBUG)
-
-    # LOGFILE
-    file_handler = logging.FileHandler(datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S') + "_log.txt")
-    file_handler.setFormatter(formatter)
-    file_handler.set_name("file")
-    file_handler.setLevel(logging.INFO)
-
-    logger.addHandler(stdout_handler)
-    logger.addHandler(file_handler)
-
-    return logger
-
-
-def logit(func, **kwargs):
+class CyclicTimer(object):
     """
-    Decorator to wrap a function into a logging try-catch block
-    You can use it to prevent timers from dying
+    Repeated timer that runs in a fixed interval and swallows exceptions
+
+    All timers are running as daemons, so the threads doesn't prevent python from exiting!
     """
-    def inner(*args, **kwargs):
+
+    def __init__(self, delay, f):
+        self.f = f
+        self.timer = Timer(delay, self.wrap_f)
+        self.timer.setDaemon(True)
+        self.delay = delay
+
+    def wrap_f(self):
         try:
-            return func(*args, **kwargs)
+            self.f()
+        except KeyboardInterrupt:
+            exit()
         except Exception:
-            import traceback
-            log.error("Unknown error: %s", traceback.format_exc())
+            log.warn("Prevented timer from crashing - Exception was:")
+            log.warn(traceback.format_exc())
 
-    return inner
+        self.timer = Timer(self.delay, self.wrap_f)
+        self.timer.setDaemon(True)
+        self.timer.start()
+
+    def start(self):
+        return self.timer.start()
 
 
 def init_coords():
@@ -148,7 +124,7 @@ def init_coords():
             exit(0)
 
 
-def find_object(template, debug=False):
+def find_object(template, debug=True):
     """
     Find the object in template and return it's x and y coordinates
     Only works on the primary monitor!
@@ -336,19 +312,8 @@ def upgrade_all():
             click(x, y)
 
 
-@logit
-def attack_timer():
-    """Endlessly attack, does not return until exit"""
-    while active():
-        do_attack()
-    else:
-        return
-
-
-@logit
 def buy_timer():
     """Upgrade the curqrent hero and re-schedule self"""
-    log.debug("buy timer ticking")
     search_hero(ACTIVE_HERO)
 
     if COORDINATES.get("hero"):
@@ -366,68 +331,6 @@ def buy_timer():
         do_buy(target)
         kbd.release_key("q")
 
-    if active():
-        timers["buy"] = Timer(BUY_PERIOD, buy_timer)
-        timers["buy"].start()
-
-
-@logit
-def powers_timer():
-    """Activate powers and re-schedule self"""
-    log.debug("powers timer ticking")
-    do_powers()
-
-    if active():
-        timers["powers"] = Timer(POWERS_PERIOD, powers_timer)
-        timers["powers"].start()
-
-
-@logit
-def seasonal_timer():
-    """Search + click seasonal and re-schedule self"""
-    log.debug("seasonal timer ticking")
-    click_seasonal()
-
-    if active():
-        timers["seasonal"] = Timer(SEASONAL_PERIOD, seasonal_timer)
-        timers["seasonal"].start()
-
-
-@logit
-def upgrade_timer():
-    """Click upgrade button and re-schedule self"""
-    log.debug("Upgrade timer ticking")
-
-    upgrade_all()
-
-    if active():
-        timers["upgrade"] = Timer(UPGRADE_PERIOD, upgrade_timer)
-        timers["upgrade"].start()
-
-
-@logit
-def bee_timer():
-    """Search + click bee and re-schedule self"""
-    log.debug("Bee timer ticking")
-
-    click_bee()
-
-    if active():
-        timers["bee"] = Timer(BEE_PERIOD, bee_timer)
-        timers["bee"].start()
-
-
-@logit
-def auto_timer():
-    """Search + click bee and re-schedule self"""
-    log.debug("Noauto timer ticking")
-
-    enable_autoprogress()
-
-    if active():
-        timers["progress"] = Timer(PROGRESS_PERIOD, auto_timer)
-        timers["progress"].start()
-
 
 def enable_autoprogress():
     x, y = find_object(NOAUTO)
@@ -435,31 +338,23 @@ def enable_autoprogress():
     if x and y:
         click(x, y)
 
+
 if __name__ == '__main__':
-    log = setup_logger()
-
     init_coords()
+    log.setLevel(logging.DEBUG)
 
-    while True:
+    if not active():
+        log.debug("Stand by...")
         while not active():
-            log.debug("Stand by...")
             sleep(0.5)
 
-        timers = {"attack": Timer(CLICK_PERIOD, attack_timer),
-                  "buy": Timer(BUY_PERIOD, buy_timer),
-                  "powers": Timer(POWERS_PERIOD, powers_timer),
-                  "seasonal": Timer(SEASONAL_PERIOD, seasonal_timer),
-                  "upgrade": Timer(UPGRADE_PERIOD, lambda: None),
-                  "bee": Timer(BEE_PERIOD, bee_timer),
-                  "progress": Timer(PROGRESS_PERIOD, auto_timer)}
+    CyclicTimer(CLICK_PERIOD, do_attack).start()
+    CyclicTimer(BUY_PERIOD, buy_timer).start()
+    CyclicTimer(POWERS_PERIOD, do_powers).start()
+    CyclicTimer(SEASONAL_PERIOD, click_seasonal).start()
+    CyclicTimer(UPGRADE_PERIOD, upgrade_all).start()
+    CyclicTimer(BEE_PERIOD, click_bee).start()
+    CyclicTimer(PROGRESS_PERIOD, enable_autoprogress).start()
 
-        [t.start() for t in timers.values()]
-
-        timers["attack"].join()
-
-        log.debug("Canceling timers")
-
-        while any([t.is_alive() for t in timers.values()]):
-            [t.cancel() for t in timers.values()]
-
-    log.info("Exiting")
+    while active():
+        sleep(0.5)
