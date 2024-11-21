@@ -12,6 +12,7 @@ import os
 if os.name == "nt":
     import ctypes
     from win32gui import GetWindowText, GetForegroundWindow
+
     USER32 = ctypes.WinDLL("User32.dll")
 
     def window_active():
@@ -24,7 +25,6 @@ if os.name == "nt":
         return USER32.GetKeyState(0x14)
 
 elif os.name == "posix":
-
     led_regex = re.compile("LED mask:\\s+(\\d*)")
 
     def window_active():
@@ -43,7 +43,7 @@ elif os.name == "posix":
 else:
     raise Exception("Unknown OS: %s" % os.name)
 
-FORMAT = '%(asctime)-15s [%(name)s] [%(levelname)s] %(message)s'
+FORMAT = "%(asctime)-15s [%(name)s] [%(levelname)s] %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 log = logging.getLogger("idle_slayer")
 
@@ -62,14 +62,15 @@ KEYBOARD = Controller()
 SPRINT_COOLDOWN = 1.0
 JUMP_BURST = 2
 JUMP_PAUSE = 0.5
-       
+
 activator = "numlock"
+
 
 def tap(key):
     KEYBOARD.press(key)
     sleep(0.01)
     KEYBOARD.release(key)
-    sleep(0.01)    
+    sleep(0.01)
 
 
 def sprint():
@@ -80,13 +81,16 @@ def jump_high():
     KEYBOARD.press(Key.space)
     sleep(0.15)
     KEYBOARD.release(Key.space)
-    sleep(0.01)    
+    sleep(0.01)
+
 
 def jump_low():
     tap(Key.space)
 
+
 def shoot():
     tap(Key.space)
+
 
 def jump_cycle():
     jump_high()
@@ -97,6 +101,7 @@ def jump_cycle():
     sleep(0.18)
     shoot()
 
+
 while True:
     if not active(activator):
         log.info("Waiting... Press %s to activate" % activator)
@@ -105,7 +110,6 @@ while True:
             sleep(1)
 
     log.info("Starting to fight")
-
 
     while active(activator):
         sprint()

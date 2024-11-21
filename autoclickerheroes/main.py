@@ -24,8 +24,9 @@ import pyscreenshot as pg
 import numpy as np
 import cv2
 import logging
+
 USER32 = ctypes.WinDLL("User32.dll")
-FORMAT = '%(asctime)-15s [%(name)s] [%(levelname)s] %(message)s'
+FORMAT = "%(asctime)-15s [%(name)s] [%(levelname)s] %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.WARN)
 log = logging.getLogger(__name__)
 
@@ -154,11 +155,9 @@ def find_object(template, debug=True):
 
         # Debug: View rectangle around template + center circle
         if debug:
-            cv2.rectangle(img=img,
-                          pt1=(x, y),
-                          pt2=(x + template.shape[1], y + template.shape[0]),
-                          color=(0, 0, 255),
-                          thickness=1)
+            cv2.rectangle(
+                img=img, pt1=(x, y), pt2=(x + template.shape[1], y + template.shape[0]), color=(0, 0, 255), thickness=1
+            )
 
             cv2.circle(img, (x_center, y_center), 22, (0, 255, 0), 1)
             cv2.imshow("asd", img)
@@ -339,7 +338,7 @@ def enable_autoprogress():
         click(x, y)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     init_coords()
     log.setLevel(logging.DEBUG)
 

@@ -12,6 +12,7 @@ import os
 if os.name == "nt":
     import ctypes
     from win32gui import GetWindowText, GetForegroundWindow
+
     USER32 = ctypes.WinDLL("User32.dll")
 
     def window_active():
@@ -24,7 +25,6 @@ if os.name == "nt":
         return USER32.GetKeyState(0x14)
 
 elif os.name == "posix":
-
     led_regex = re.compile("LED mask:\\s+(\\d*)")
 
     def window_active():
@@ -43,7 +43,7 @@ elif os.name == "posix":
 else:
     raise Exception("Unknown OS: %s" % os.name)
 
-FORMAT = '%(asctime)-15s [%(name)s] [%(levelname)s] %(message)s'
+FORMAT = "%(asctime)-15s [%(name)s] [%(levelname)s] %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 log = logging.getLogger("synergism")
 
@@ -63,12 +63,14 @@ def active(activator):
 KEYBOARD = Controller()
 SHORT_SLEEP = 1.0
 MEDIUM_SLEEP = 5.0
-      
+
 activator = "none"
+
 
 def enter(key):
     if active(activator):
         KEYBOARD.tap(key)
+
 
 def wait(length):
     if active(activator):
@@ -78,6 +80,7 @@ def wait(length):
 TRANS_FIRST = ["1", "2"]
 TRANS = ["1", "2", "3", "4", "5"]
 REINC = ["6", "7", "8", "9", "e"]
+
 
 def transcension_cycle():
     enter("1")
@@ -93,6 +96,7 @@ def transcension_cycle():
     enter("e")
     wait(SHORT_SLEEP)
 
+
 def first_reincarnation_cycle():
     enter("6")
     wait(SHORT_SLEEP)
@@ -100,6 +104,7 @@ def first_reincarnation_cycle():
     wait(SHORT_SLEEP)
     enter("e")
     wait(SHORT_SLEEP)
+
 
 def reincarnation_cycle():
     enter("6")
@@ -116,6 +121,7 @@ def reincarnation_cycle():
     wait(MEDIUM_SLEEP)
     wait(MEDIUM_SLEEP)
 
+
 def fulll_cycle():
     t1 = time()
 
@@ -124,12 +130,13 @@ def fulll_cycle():
         return
 
     first_reincarnation_cycle()
-    
+
     while active(activator):
         transcension_cycle()
         if not active(activator):
             break
         reincarnation_cycle()
+
 
 while True:
     if not active(activator):
@@ -139,7 +146,6 @@ while True:
             sleep(1)
 
     log.info("Starting Challenges")
-
 
     while active(activator):
         fulll_cycle()
