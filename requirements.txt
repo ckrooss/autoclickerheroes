@@ -1,7 +1,0 @@
-cv2
-pymouse
-pyuserinput
-Pillow
-numpy
-nose
-pyscreenshot
