@@ -22,7 +22,7 @@ elif os.name == "posix":
     led_regex = re.compile("LED mask:\\s+(\\d*)")
 
     def window_active(name):
-        return name in check_output(["xdotool", "getactivewindow", "getwindowname"])
+        return name in check_output(["kdotool", "getactivewindow", "getwindowname"])
 
     def numlock_active():
         led_bitmap = int(led_regex.search(check_output(["xset", "q"]).decode("utf-8")).group(1))
