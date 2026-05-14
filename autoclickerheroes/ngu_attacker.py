@@ -1,16 +1,9 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function
-from time import sleep, time
-import traceback
+from time import sleep
+
 from pynput.keyboard import Controller
-import logging
-from .util import active, Activator
 
-
-FORMAT = "%(asctime)-15s [%(name)s] [%(levelname)s] %(message)s"
-logging.basicConfig(format=FORMAT, level=logging.DEBUG)
-log = logging.getLogger("ngu_attacker")
+from .util import Activator, ActivatorKey
 
 # Defensive Buff (s), Offensive Buff (f), Ultimate Buff (h) -> Mega Buff (v)
 KEYBOARD = Controller()
@@ -20,6 +13,7 @@ DEFENSE = ["a", "r"]
 BUFFING = ["v", "g"]
 GLOBAL_COOLDOWN = 0.8
 KEYTAP_COOLDOWN = 0.05
+ACTIVATOR = Activator(ActivatorKey.Capslock, "NGU")
 
 def execute_all():
     for cmd in HEALING + DEFENSE + BUFFING + ATTACKS:
@@ -29,19 +23,11 @@ def execute_all():
         sleep(KEYTAP_COOLDOWN)
 
 def main():
-    activator = Activator.Capslock
-    window_name = "NGU"
-
     while True:
-        if not active(activator, window_name):
-            log.info("Waiting... Press %s to activate" % activator)
+        ACTIVATOR.waitForActive()
+        print("Starting to fight")
 
-            while not active(activator, window_name):
-                sleep(1)
-
-        log.info("Starting to fight")
-
-        while active(activator, window_name):
+        while ACTIVATOR.active():
             execute_all()
             sleep(KEYTAP_COOLDOWN)
 

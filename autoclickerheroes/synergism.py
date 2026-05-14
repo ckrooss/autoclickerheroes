@@ -1,79 +1,22 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function
 from time import sleep, time
-import traceback
-from pynput.keyboard import Key, Controller
-import logging
-import re
-from subprocess import check_output, CalledProcessError
-import os
 
-if os.name == "nt":
-    import ctypes
-    from win32gui import GetWindowText, GetForegroundWindow
-
-    USER32 = ctypes.WinDLL("User32.dll")
-
-    def window_active():
-        return "Synergism" in GetWindowText(GetForegroundWindow())
-
-    def numlock_active():
-        return USER32.GetKeyState(0x90)
-
-    def capslock_active():
-        return USER32.GetKeyState(0x14)
-
-elif os.name == "posix":
-    led_regex = re.compile("LED mask:\\s+(\\d*)")
-
-    def window_active():
-        try:
-            return b"Idle Slayer" in check_output(["xdotool", "getactivewindow", "getwindowname"])
-        except CalledProcessError:
-            return False
-
-    def numlock_active():
-        led_bitmap = int(led_regex.search(check_output(["xset", "q"]).decode("utf-8")).group(1))
-        return led_bitmap & 2
-
-    def capslock_active():
-        led_bitmap = int(led_regex.search(check_output(["xset", "q"]).decode("utf-8")).group(1))
-        return led_bitmap & 1
-else:
-    raise Exception("Unknown OS: %s" % os.name)
-
-FORMAT = "%(asctime)-15s [%(name)s] [%(levelname)s] %(message)s"
-logging.basicConfig(format=FORMAT, level=logging.DEBUG)
-log = logging.getLogger("synergism")
-
-
-def active(activator):
-    if activator == "numlock":
-        return window_active() and numlock_active()
-    elif activator == "capslock":
-        return window_active() and capslock_active()
-    elif activator == "none":
-        return window_active()
-    else:
-        raise Exception("Unknown activator: %s" % activator)
-
+from pynput.keyboard import Controller
+from util import Activator, ActivatorKey
 
 # Defensive Buff (s), Offensive Buff (f), Ultimate Buff (h) -> Mega Buff (v)
 KEYBOARD = Controller()
 SHORT_SLEEP = 1.0
 MEDIUM_SLEEP = 5.0
-
-activator = "none"
-
+ACTIVATOR = Activator(ActivatorKey.Capslock)
 
 def enter(key):
-    if active(activator):
+    if ACTIVATOR.active():
         KEYBOARD.tap(key)
 
 
 def wait(length):
-    if active(activator):
+    if ACTIVATOR.active():
         sleep(length)
 
 
@@ -126,27 +69,22 @@ def fulll_cycle():
     t1 = time()
 
     transcension_cycle()
-    if not active(activator):
+    if not ACTIVATOR.active():
         return
 
     first_reincarnation_cycle()
 
-    while active(activator):
+    while ACTIVATOR.active():
         transcension_cycle()
-        if not active(activator):
+        if not ACTIVATOR.active():
             break
         reincarnation_cycle()
 
 
 while True:
-    if not active(activator):
-        log.info("Waiting... Press %s to activate" % activator)
+    ACTIVATOR.waitForActive()
+    print("Starting Challenges")
 
-        while not active(activator):
-            sleep(1)
-
-    log.info("Starting Challenges")
-
-    while active(activator):
+    while ACTIVATOR.active():
         fulll_cycle()
         wait(MEDIUM_SLEEP)
