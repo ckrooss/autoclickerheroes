@@ -2,25 +2,25 @@
 name = "autoclickerheroes"
 
 requires-python = ">= 3.10"
-dynamic = ["version"]
+version = "1.0.0"
 dependencies = [
   "opencv-python",
   "numpy",
   "pymouse",
   "pyuserinput",
   "pyscreenshot",
-  "pynput>=1.7.7",
+  "pynput>=1.8.2",
   "pygetwindow>=0.0.9",
-  "ruff"
+  "ruff",
 ]
 
 [build-system]
-requires = ["setuptools >= 61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.13.9,<0.14"]
+build-backend = "uv_build"
 
-[tool.setuptools.packages.find]
-include = ["autoclickerheroes"]
-exclude = ["templates"]
+#[tool.setuptools.packages.find]
+#include = ["autoclickerheroes"]
+#exclude = ["templates"]
 
 [project.scripts]
 ngu = "autoclickerheroes.ngu_attacker:main"
